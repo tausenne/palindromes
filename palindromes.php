@@ -1,18 +1,9 @@
 <?php
+require_once('utils.php');
 /**
  * All of this should be done properly as a class, but procedural was faster to code.
- * The input file must be contained in the same directory as the script.
+ * The input file must be located in the same directory as the script.
  */
-
-/**
- * Wrapper for printing log messages to screen. Adds date-time-timezone timestamp and
- * breaks the line afterwards.
- *
- * @param string $msg message to print
- */
-function proc_log($msg = '') {
-    echo '[' . date('Y-m-d H:i:s T') . "] {$msg}" . PHP_EOL;
-}
 
 /**
  * Gets input from a string. A string may be either a filename or a text string.
@@ -44,9 +35,20 @@ function getInput($str = '') {
  * @param bool $recur whether to execute recursively. Will determine which function
  *                    to call
  */
-function findPalindromes($str = '', $recur = false) {
+function findPalindromes($str = '', $method = '') {
     $str = getInput($str);
-    $func = ($recur) ? 'isPalindromeRecursive' : 'isPalindrome';
+    switch ($method) {
+        case 'recursive':
+            $func = 'isPalindromeRecursive';
+            break;
+
+        case 'half':
+            $func = 'isPalindromeHalf';
+            break;
+
+        default:
+            $func = 'isPalindrome';
+    }
 
     $pals = array();
     for ($i = 0; $i <= strlen($str) - 1; ++$i) {
@@ -89,7 +91,7 @@ function isPalindrome($str = '') {
             $isPalindrome = true;
             $i = 0;
             $len = $wordlength;
-            while ($i <= floor($wordlength / 2)) {
+            while ($i <= floor($wordlength / 2) && $len > 0) {
                 $part = substr($str, $i, $len);
                 if ($part[0] != $part[strlen($part) - 1]) {
                     $isPalindrome = false;
@@ -101,6 +103,36 @@ function isPalindrome($str = '') {
             }
 
             return $isPalindrome;
+    }
+}
+
+/**
+ * Determines whether a string is a palindrome by cutting it in half and
+ * comparing the first half to the reverse of the second half.
+ *
+ * @param string $str string to validate palindromeness of
+ *
+ * @return bool true for palindromes, false for non-palindromes
+ */
+function isPalindromeHalf($str = '') {
+    $wordlength = strlen($str);
+    switch ($wordlength) {
+        case 1:
+            return true;
+            break;
+
+        case 2:
+        case 3:
+            return ($str[0] == $str[$wordlength - 1]);
+            break;
+
+        default:
+            $half = floor($wordlength / 2);
+            $first_half = substr($str, 0, $half);
+            $second_half_start = ($wordlength % 2) ? ($half + 1) : $half; // if it's an odd-length word, second half starts AFTER the middle character
+            $second_half_reversed = strrev(substr($str, $second_half_start, $wordlength));
+
+            return ($first_half == $second_half_reversed);
     }
 }
 
@@ -145,9 +177,11 @@ elseif ($argv[1] == '--help') {
     $help = <<<HELP
 You can run the script in the following ways:
             php palindromes.php kayak
-            php palindromes.php kayak recursive
+            php palindromes.php kayak method=recursive
+            php palindromes.php kayak method=half
             php palindromes.php very_long_palindrome.txt
-            php palindromes.php very_long_palindrome.txt recursive
+            php palindromes.php very_long_palindrome.txt method=recursive
+            php palindromes.php very_long_palindrome.txt method=half
 
 The input file must be located in the same directory as the original script.
 
@@ -159,11 +193,23 @@ HELP;
 }
 
 else {
-    $recursive = (isset($argv[2]) && !empty($argv[2]) && $argv[2] == 'recursive');
+    if (isset($argv[2]) &&
+        !empty($argv[2]) &&
+        strpos($argv[2], '=') !== false) {
+            $parts = explode('=', $argv[2]);
+            if ($parts[0] == 'method') {
+                $method = $parts[1];
+            }
+    }
+
+    else {
+        $method = '';
+    }
+
     $start = microtime(true);
-    findPalindromes($argv[1], $recursive);
+    findPalindromes($argv[1], $method);
     $end = microtime(true);
-    $diff = $end - $start;
+    $diff = number_format_all($end - $start);
 
     proc_log("the whole process took {$diff} s");
 }
